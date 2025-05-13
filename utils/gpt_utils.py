@@ -2,14 +2,14 @@ from openai import OpenAI
 import time
 import config
 import streamlit as st
-import os
 
-# API 키 직접 환경 변수로 설정
-os.environ["OPENAI_API_KEY"] = config.OPENAI_API_KEY
+# API 키 확인
+if not config.OPENAI_API_KEY:
+    st.error("OpenAI API 키가 설정되지 않았습니다. Streamlit Cloud의 Secret 또는 환경 변수에서 OPENAI_API_KEY를 설정해주세요.")
 
-# 클라이언트 초기화 (인수 없이)
+# OpenAI 클라이언트 생성
 try:
-    client = OpenAI()  # API 키는 환경 변수에서 자동으로 로드됨
+    client = OpenAI(api_key=config.OPENAI_API_KEY)
 except Exception as e:
     st.error(f"OpenAI 클라이언트 초기화 오류: {str(e)}")
     client = None
@@ -36,6 +36,7 @@ def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATUR
         time.sleep(1)
         return None
 
+# 나머지 함수들은 그대로 유지
 def analyze_topic(topic):
     """
     입력된 주제를 분석하여 정의, 의미, 문제점, 해결 사례 등을 제공합니다.

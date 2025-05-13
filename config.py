@@ -1,15 +1,16 @@
 import os
 from dotenv import load_dotenv
+import streamlit as st
 
-# 환경 변수 로드
+# 환경 변수 로드 (로컬 개발용)
 load_dotenv()
 
-# API 키
-OPENAI_API_KEY = os.getenv("OPENAI_API_KEY")
-CROSSREF_EMAIL = os.getenv("CROSSREF_EMAIL")
-HUGGINGFACE_API_KEY = os.getenv("HUGGINGFACE_API_KEY")
-EXTRACTURL_API_KEY = os.getenv("EXTRACTURL_API_KEY")
-WEBSEARCHRANKED_API_KEY = os.getenv("WEBSEARCHRANKED_API_KEY")
+# API 키 (Streamlit Cloud 또는 환경 변수에서 가져오기)
+OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY", ""))
+CROSSREF_EMAIL = st.secrets.get("CROSSREF_EMAIL", os.getenv("CROSSREF_EMAIL", ""))
+HUGGINGFACE_API_KEY = st.secrets.get("HUGGINGFACE_API_KEY", os.getenv("HUGGINGFACE_API_KEY", ""))
+EXTRACTURL_API_KEY = st.secrets.get("EXTRACTURL_API_KEY", os.getenv("EXTRACTURL_API_KEY", ""))
+WEBSEARCHRANKED_API_KEY = st.secrets.get("WEBSEARCHRANKED_API_KEY", os.getenv("WEBSEARCHRANKED_API_KEY", ""))
 
 # GPT 설정
 GPT_MODEL = "gpt-4-turbo" # 또는 "gpt-3.5-turbo" (비용 절감)

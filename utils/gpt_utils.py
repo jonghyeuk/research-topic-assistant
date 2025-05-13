@@ -1,17 +1,17 @@
-import openai
+from openai import OpenAI
 import time
 import config
 import streamlit as st
 
-# OpenAI API 키 설정
-openai.api_key = config.OPENAI_API_KEY
+# OpenAI 클라이언트 생성
+client = OpenAI(api_key=config.OPENAI_API_KEY)
 
 def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATURE, max_tokens=config.MAX_TOKENS):
     """
     GPT 모델로부터 응답을 받아옵니다.
     """
     try:
-        response = openai.chat.completions.create(
+        response = client.chat.completions.create(
             model=model,
             messages=[{"role": "system", "content": "당신은 연구 주제 선정을 돕는 AI 보조입니다."},
                       {"role": "user", "content": prompt}],

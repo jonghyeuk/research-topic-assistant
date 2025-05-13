@@ -20,16 +20,14 @@ else:
         paper_container.info("AI가 논문 구조를 생성하고 있습니다...")
         
         # 논문 생성 시작
-        paper_content = generate_paper_structure(st.session_state.selected_topic)
+        paper_result = generate_paper_structure(st.session_state.selected_topic)
         
-        if paper_content:
+        if paper_result and "content" in paper_result:
             # 논문 콘텐츠 저장
             st.session_state.generated_paper = {
                 "topic": st.session_state.selected_topic,
-                "content": paper_content,
-                "title": st.session_state.selected_topic,  # 간단화를 위해 같은 값 사용
-                "authors": "AI 연구 도우미",
-                # 추가 정보는 파싱 필요 (실제 구현 시)
+                "content": paper_result["content"],
+                "papers": paper_result.get("papers", [])
             }
             
             # A4 형식 논문 표시 컨테이너
@@ -39,27 +37,46 @@ else:
             typing_container = st.empty()
             
             # 타이핑 효과 구현 (간단한 버전)
-            full_text = paper_content
-            displayed_text = ""
-            
-            # 실제 서비스에서는 WebSocket으로 스트리밍 구현
-            # 여기서는 간단한 타이핑 효과 시뮬레이션
-            for i in range(len(full_text) + 1):
-                displayed_text = full_text[:i]
+            full_text = paper_result["content"]
+            if isinstance(full_text, str):  # 문자열 타입 확인
+                displayed_text = ""
                 
-                # A4 형식으로 표시
+                # 애니메이션 효과 (선택적)
+                with st.spinner("논문 내용을 표시하는 중..."):
+                    for i in range(min(len(full_text) + 1, 1000)):  # 최대 1000자까지만 애니메이션 (성능 고려)
+                        displayed_text = full_text[:i]
+                        
+                        # A4 형식으로 표시
+                        typing_container.markdown(
+                            f"""
+                            <div class="paper-container">
+                                <div class="paper-content">{displayed_text}</div>
+                            </div>
+                            """, 
+                            unsafe_allow_html=True
+                        )
+                        
+                        time.sleep(0.001)  # 매우 빠른 속도로 표시
+                    
+                    # 나머지 텍스트 한 번에 표시
+                    typing_container.markdown(
+                        f"""
+                        <div class="paper-container">
+                            <div class="paper-content">{full_text}</div>
+                        </div>
+                        """, 
+                        unsafe_allow_html=True
+                    )
+            else:
+                # 문자열이 아닌 경우 그냥 전체 내용 표시
                 typing_container.markdown(
                     f"""
                     <div class="paper-container">
-                        <div class="paper-title">{st.session_state.selected_topic}</div>
-                        <div class="paper-authors">AI 연구 도우미</div>
-                        <div class="paper-content">{displayed_text}</div>
+                        <div class="paper-content">{full_text}</div>
                     </div>
                     """, 
                     unsafe_allow_html=True
                 )
-                
-                time.sleep(0.01)  # 프로덕션에서는 더 자연스러운 속도로 조정
             
             # 다음 단계로 이동 버튼
             st.session_state.step = 4
@@ -79,8 +96,6 @@ else:
         st.markdown(
             f"""
             <div class="paper-container">
-                <div class="paper-title">{st.session_state.selected_topic}</div>
-                <div class="paper-authors">AI 연구 도우미</div>
                 <div class="paper-content">{st.session_state.generated_paper['content']}</div>
             </div>
             """, 

@@ -1,36 +1,40 @@
-from openai import OpenAI
+import requests
+import json
 import time
 import config
 import streamlit as st
-import os
-
-# API 키 직접 환경 변수로 설정
-os.environ["OPENAI_API_KEY"] = config.OPENAI_API_KEY
-
-# 클라이언트 초기화 (인수 없이)
-try:
-    client = OpenAI()  # API 키는 환경 변수에서 자동으로 로드됨
-except Exception as e:
-    st.error(f"OpenAI 클라이언트 초기화 오류: {str(e)}")
-    client = None
 
 def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATURE, max_tokens=config.MAX_TOKENS):
     """
-    GPT 모델로부터 응답을 받아옵니다.
+    GPT 모델로부터 응답을 받아옵니다. OpenAI 라이브러리 대신 직접 API 호출을 사용합니다.
     """
-    if not client:
-        st.error("OpenAI 클라이언트가 초기화되지 않았습니다.")
-        return None
-        
+    headers = {
+        "Content-Type": "application/json",
+        "Authorization": f"Bearer {config.OPENAI_API_KEY}"
+    }
+    
+    payload = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": "당신은 연구 주제 선정을 돕는 AI 보조입니다."},
+            {"role": "user", "content": prompt}
+        ],
+        "temperature": temperature,
+        "max_tokens": max_tokens
+    }
+    
     try:
-        response = client.chat.completions.create(
-            model=model,
-            messages=[{"role": "system", "content": "당신은 연구 주제 선정을 돕는 AI 보조입니다."},
-                      {"role": "user", "content": prompt}],
-            temperature=temperature,
-            max_tokens=max_tokens
+        response = requests.post(
+            "https://api.openai.com/v1/chat/completions",
+            headers=headers,
+            data=json.dumps(payload)
         )
-        return response.choices[0].message.content
+        
+        if response.status_code == 200:
+            return response.json()["choices"][0]["message"]["content"]
+        else:
+            st.error(f"GPT API 오류: {response.status_code}, {response.text}")
+            return None
     except Exception as e:
         st.error(f"GPT API 오류: {str(e)}")
         time.sleep(1)

@@ -4,11 +4,49 @@ import time
 import config
 import streamlit as st
 import re
+import xml.etree.ElementTree as ET
 
 def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATURE, max_tokens=config.MAX_TOKENS):
     """
     GPT 모델로부터 응답을 받아옵니다. OpenAI 라이브러리 대신 직접 API 호출을 사용합니다.
     """
+    system_prompt = """당신은 학생과 연구자를 위한 연구 주제 선정 전문가입니다.  
+주어진 연구 주제에 대해 학술적 분석을 제공하고, 신뢰할 수 있는 출처 및 참고문헌을 포함하여 연구자가 가치 있는 연구를 수행하도록 돕습니다.  
+### 🧪 역할  
+- 연구 주제 분석 전문가  
+- 복잡한 연구 내용을 쉽게 설명  
+- 최신 연구 동향 반영  
+- 명확하고 구체적인 연구 주제 및 논문 구조 제안  
+### 📚 주요 기능  
+✅ 논문 검색 API를 활용해 **실제 논문만 인용** (가짜 논문 생성 금지)  
+✅ 과학적 깊이 + 명확한 구조 + 최신 연구 동향 반영  
+✅ 답변은 **구조화된 마크다운 형식**으로 제공  
+🔹 **답변 구성**  
+- 🧠 개요  
+- 🔬 기전 또는 작동 원리  
+- 🧩 핵심 변수 또는 치료/요인  
+- 📊 논문 비교 및 근거 요약  
+- 🧾 결론  
+- 🔗 출처 테이블  
+### 🎯 연구 주제 커버 분야  
+🔹 생명과학  
+🔹 물리학, 천문학  
+🔹 화학, 재료과학  
+🔹 환경과학, 기후과학  
+🔹 컴퓨터과학, 데이터과학  
+🔹 심리학, 사회과학  
+🔹 공학 및 응용기술  
+### ⚡ 행동 기준  
+1️⃣ 복잡한 연구 주제를 쉽게 설명  
+2️⃣ 실용적이고 실현 가능한 연구 주제 제안  
+3️⃣ 최신 연구 동향과 학계의 관심사 반영  
+4️⃣ 명확하고 구체적인 조언 제공 (모호한 표현 금지)  
+5️⃣ 학술적 표준과 관행을 따르는 논문 구조 제안  
+6️⃣ 정확한 인용 형식 사용  
+### 🚫 금지사항  
+❌ 논문 제목, 저자, 연도 등을 임의로 생성 금지  
+❌ 인용은 반드시 **API를 통해 가져온 실제 논문만 사용**"""
+    
     headers = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {config.OPENAI_API_KEY}"
@@ -17,7 +55,7 @@ def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATUR
     payload = {
         "model": model,
         "messages": [
-            {"role": "system", "content": "당신은 연구 주제 선정을 돕는 AI 보조입니다."},
+            {"role": "system", "content": system_prompt},
             {"role": "user", "content": prompt}
         ],
         "temperature": temperature,
@@ -45,31 +83,63 @@ def analyze_topic(topic):
     """
     입력된 주제를 분석하여 정의, 의미, 문제점, 해결 사례 등을 제공합니다.
     """
+    # 먼저 실제 논문 검색
+    arxiv_papers = search_arxiv(topic, max_results=5)
+    crossref_papers = search_crossref(topic, max_results=5)
+    all_papers = merge_search_results(arxiv_papers, crossref_papers, max_total=7)
+    
+    # 검색된 논문 정보를 포함한 프롬프트 생성
+    paper_info = ""
+    if all_papers:
+        paper_info = "다음은 해당 주제와 관련된 실제 논문 정보입니다:\n\n"
+        for i, paper in enumerate(all_papers, 1):
+            paper_info += f"{i}. 제목: {paper['title']}\n"
+            paper_info += f"   저자: {paper['authors']}\n"
+            paper_info += f"   발행: {paper['published']}\n"
+            paper_info += f"   출처: {paper['source']}\n"
+            if paper['summary'] and paper['summary'] != "요약 정보 없음":
+                paper_info += f"   요약: {paper['summary']}\n"
+            paper_info += "\n"
+    
     prompt = f"""
     다음 연구 주제에 대해 상세히 분석해주세요: "{topic}"
     
-    다음 형식으로 구조화된 분석을 제공해주세요:
+    분석은 다음 구조로 작성해주세요:
     
-    1. 주제 정의: 이 주제가 무엇인지 명확하게 정의
-    2. 현재 의미: 이 주제가 현재 학계/산업에서 갖는 의미와 중요성
-    3. 과학적/사회적 문제: 이 주제와 관련된 주요 문제 및 이슈
-    4. 해결 사례/현재 상황: 주요 연구 사례나 현재까지의 발전 상황
-    5. 출처 및 참고자료: 관련 연구나 문헌 (저자, 제목, 연도 포함)
+    ## 🧠 개요
+    [주제 정의 및 현재 연구 동향 개요]
     
-    깊이 있는 분석을 제공해주세요.
+    ## 🔬 기전 또는 작동 원리
+    [주제와 관련된 핵심 과학적 원리 설명]
+    
+    ## 🧩 핵심 변수 또는 요인
+    [주제를 이해하는 데 중요한 핵심 요소들]
+    
+    ## 📊 논문 비교 및 근거 요약
+    [주요 연구 논문들의 결과 비교 및 주요 발견]
+    
+    ## 🧾 결론
+    [현재 연구 상황 요약 및 향후 연구 방향 제안]
+    
+    ## 🔗 출처 테이블
+    [정확한 인용 형식으로 출처 나열]
+    
+    {paper_info}
+    
+    실제 존재하는 논문만 인용하고, 가짜 논문이나 정보를 생성하지 마세요.
+    제공된 논문 정보를 활용하여 분석해주세요.
     """
     
     # 로딩 표시
     with st.spinner("주제를 분석 중입니다..."):
         result = get_completion(prompt)
     
-    # 반환 값을 정형화된 데이터로 변환 (예시)
+    # 반환 값을 정형화된 데이터로 변환
     if result:
-        # 여기서는 간단하게 전체 텍스트를 반환하지만,
-        # 필요시 섹션별로 파싱하여 구조화된 데이터로 반환 가능
         return {
             "full_text": result,
-            "topic": topic
+            "topic": topic,
+            "papers": all_papers
         }
     else:
         return None
@@ -124,9 +194,7 @@ def search_arxiv(query, max_results=5):
         response = requests.get(url)
         
         if response.status_code == 200:
-            # XML 파싱 (간단한 방식)
-            import xml.etree.ElementTree as ET
-            
+            # XML 파싱
             # 네임스페이스 정의
             namespaces = {
                 'atom': 'http://www.w3.org/2005/Atom',
@@ -325,77 +393,55 @@ def generate_similar_topics(topic, count=5):
     입력된 주제와 유사한 연구 주제를 생성합니다.
     추가로 실제 학술 검색 결과도 함께 제공합니다.
     """
-    # GPT를 통한 유사 주제 생성
-    prompt = f"""
-    다음 연구 주제와 관련된 유사하지만 독창적인 연구 주제 {count}개를 생성해주세요: "{topic}"
-    
-    각 주제에 대해 간략한 설명(1-2문장)을 함께 제공해주세요.
-    주제는 번호를 매겨서 리스트 형태로 제시해주세요.
-    """
-    
-    with st.spinner("유사 주제를 생성 중입니다..."):
-        ai_result = get_completion(prompt)
-    
     # 외부 API를 통한 실제 연구 검색
     with st.spinner("학술 데이터베이스에서 관련 연구를 검색 중입니다..."):
         try:
             # arXiv 검색
-            arxiv_results = search_arxiv(topic, max_results=3)
+            arxiv_results = search_arxiv(topic, max_results=5)
             
             # Crossref 검색
-            crossref_results = search_crossref(topic, max_results=3)
+            crossref_results = search_crossref(topic, max_results=5)
             
             # 결과 병합
-            api_results = merge_search_results(arxiv_results, crossref_results, max_total=6)
+            api_results = merge_search_results(arxiv_results, crossref_results, max_total=8)
         except Exception as e:
             st.error(f"학술 API 검색 오류: {str(e)}")
             api_results = []
     
-    # 각 학술 데이터베이스에서 검색 결과가 없는 경우
-    if not api_results:
-        # GPT API로 대체 결과 생성
-        with st.spinner("추가 유사 주제를 생성 중입니다..."):
-            prompt_extra = f"""
-            다음 연구 주제와 관련된 실제 존재하는 학술 논문 제목과 저자, 발행년도를 {count}개 생성해주세요: "{topic}"
-            
-            다음 형식으로 작성해주세요:
-            1. "논문 제목" - 저자명 (발행년도)
-            2. "논문 제목" - 저자명 (발행년도)
-            ...
-            
-            최신 연구 동향을 반영하고, 다양한 학술지나 컨퍼런스에서 발표된 논문을 포함해주세요.
-            """
-            extra_results = get_completion(prompt_extra)
-            
-            # 형식화된 대체 결과 생성
-            api_results = []
-            lines = extra_results.strip().split('\n')
-            for line in lines:
-                if not line.strip():
-                    continue
-                    
-                # 기본 형식: 번호. "제목" - 저자 (연도)
-                try:
-                    parts = line.split('"')
-                    if len(parts) >= 2:
-                        title = parts[1].strip()
-                        rest = parts[2].strip()
-                        
-                        author_year = rest.split('(')
-                        author = author_year[0].replace('-', '').strip()
-                        year = author_year[1].replace(')', '').strip() if len(author_year) > 1 else "N/A"
-                        
-                        api_results.append({
-                            'title': title,
-                            'authors': author,
-                            'published': year,
-                            'summary': "GPT 생성 추천 논문 (실제 논문과 일치하지 않을 수 있습니다)",
-                            'url': "",
-                            'source': 'GPT 추천'
-                        })
-                except:
-                    # 파싱 오류시 그냥 넘어감
-                    continue
+    # 검색된 논문 정보를 프롬프트에 추가
+    paper_info = ""
+    if api_results:
+        paper_info = "다음은 해당 주제와 관련된 실제 논문 정보입니다. 이를 참고하여 유사 주제를 생성해주세요:\n\n"
+        for i, paper in enumerate(api_results, 1):
+            paper_info += f"{i}. 제목: {paper['title']}\n"
+            paper_info += f"   저자: {paper['authors']}\n"
+            paper_info += f"   발행: {paper['published']}\n"
+            paper_info += f"   출처: {paper['source']}\n"
+            if paper['summary'] and paper['summary'] != "요약 정보 없음":
+                paper_info += f"   요약: {paper['summary'][:150]}...\n"
+            paper_info += "\n"
+    
+    # GPT를 통한 유사 주제 생성
+    prompt = f"""
+    다음 연구 주제와 관련된 유사하지만 독창적인 연구 주제 {count}개를 생성해주세요: "{topic}"
+    
+    {paper_info}
+    
+    각 주제는 다음 형식으로 제시해주세요:
+    
+    ## 주제 1: [주제명]
+    **설명**: [주제에 대한 간략한 설명 및 연구 가치]
+    **관련 논문**: [위 목록에서 관련 있는 논문 참조]
+    
+    ## 주제 2: [주제명]
+    ...
+    
+    실제 논문을 기반으로 하되, 새롭고 독창적인 연구 주제를 제안해주세요.
+    각 주제는 실행 가능하고, 명확하며, 구체적이어야 합니다.
+    """
+    
+    with st.spinner("유사 주제를 생성 중입니다..."):
+        ai_result = get_completion(prompt)
     
     # 최종 결과 반환
     return {
@@ -407,27 +453,75 @@ def generate_paper_structure(topic):
     """
     선택된 주제에 대한 논문 구조를 생성합니다.
     """
+    # 먼저 실제 논문 검색
+    arxiv_papers = search_arxiv(topic, max_results=3)
+    crossref_papers = search_crossref(topic, max_results=3)
+    all_papers = merge_search_results(arxiv_papers, crossref_papers, max_total=5)
+    
+    # 검색된 논문 정보를 포함한 프롬프트 생성
+    paper_info = ""
+    if all_papers:
+        paper_info = "다음은 해당 주제와 관련된 실제 논문 정보입니다. 이를 참고하여 논문 구조를 생성해주세요:\n\n"
+        for i, paper in enumerate(all_papers, 1):
+            paper_info += f"{i}. 제목: {paper['title']}\n"
+            paper_info += f"   저자: {paper['authors']}\n"
+            paper_info += f"   발행: {paper['published']}\n"
+            paper_info += f"   출처: {paper['source']}\n"
+            if paper['summary'] and paper['summary'] != "요약 정보 없음":
+                paper_info += f"   요약: {paper['summary']}\n"
+            paper_info += "\n"
+    
     prompt = f"""
     다음 연구 주제에 대한 학술 논문 구조를 생성해주세요: "{topic}"
     
-    다음 섹션을 포함하는 상세한 논문 구조를 작성해주세요:
+    {paper_info}
     
-    1. 제목: 명확하고 구체적인 논문 제목
-    2. 초록: 연구의 목적, 방법, 결과, 의의를 요약 (200-250단어)
-    3. 서론: 연구 배경, 중요성, 연구 질문, 가설 등을 설명
-    4. 실험 방법: 제안된 연구 방법 및 실험 설계 상세 설명
-    5. 예상 결과: 실험을 통해 얻을 수 있는 예상 결과 설명
-    6. 결론: 연구의 의의와 향후 연구 방향 제시
-    7. 참고문헌: 관련 연구 5-7개 (형식: 저자, 제목, 저널명, 연도)
+    논문은 다음 섹션을 포함해야 합니다:
     
-    각 섹션은 실제 논문처럼 구체적이고 학술적인 내용으로 작성해주세요.
+    # [논문 제목]
+    
+    ## 초록
+    [연구의 목적, 방법, 결과, 의의를 요약 (200-250단어)]
+    
+    ## 1. 서론
+    ### 1.1 연구 배경
+    ### 1.2 연구 목적 및 질문
+    ### 1.3 연구의 중요성
+    
+    ## 2. 선행 연구 검토
+    ### 2.1 이론적 배경
+    ### 2.2 관련 연구 동향
+    ### 2.3 연구 공백 및 본 연구의 위치
+    
+    ## 3. 연구 방법
+    ### 3.1 연구 설계
+    ### 3.2 데이터 수집 방법
+    ### 3.3 분석 방법
+    
+    ## 4. 예상 결과
+    ### 4.1 주요 발견
+    ### 4.2 결과 해석
+    
+    ## 5. 결론 및 논의
+    ### 5.1 연구 요약
+    ### 5.2 연구의 의의
+    ### 5.3 한계점 및 향후 연구 방향
+    
+    ## 참고문헌
+    [실제 논문을 정확한 인용 형식으로 나열]
+    
+    각 섹션에 구체적인 내용을 작성해주세요. 실제 논문처럼 학술적이고 체계적이어야 합니다.
+    참고문헌은 제공된 실제 논문을 포함하여 정확한 인용 형식으로 작성해주세요.
     """
     
     with st.spinner("논문 구조를 생성 중입니다... (약 1분 소요)"):
         result = get_completion(prompt, max_tokens=2500)
     
     if result:
-        return result
+        return {
+            "content": result,
+            "papers": all_papers
+        }
     else:
         return None
 
@@ -435,23 +529,60 @@ def generate_niche_topics(topic, count=4):
     """
     선택된 주제와 관련된 틈새 연구 주제를 제안합니다.
     """
+    # 먼저 실제 논문 검색
+    arxiv_papers = search_arxiv(topic, max_results=3)
+    crossref_papers = search_crossref(topic, max_results=3)
+    all_papers = merge_search_results(arxiv_papers, crossref_papers, max_total=5)
+    
+    # 검색된 논문 정보를 포함한 프롬프트 생성
+    paper_info = ""
+    if all_papers:
+        paper_info = "다음은 해당 주제와 관련된 실제 논문 정보입니다. 이를 참고하여 틈새 주제를 제안해주세요:\n\n"
+        for i, paper in enumerate(all_papers, 1):
+            paper_info += f"{i}. 제목: {paper['title']}\n"
+            paper_info += f"   저자: {paper['authors']}\n"
+            paper_info += f"   발행: {paper['published']}\n"
+            paper_info += f"   출처: {paper['source']}\n"
+            if paper['summary'] and paper['summary'] != "요약 정보 없음":
+                paper_info += f"   요약: {paper['summary'][:150]}...\n"
+            paper_info += "\n"
+    
     prompt = f"""
     다음 연구 주제와 관련된 틈새 연구 주제 {count}개를 제안해주세요: "{topic}"
     
-    틈새 주제란 아직 충분히 연구되지 않았지만 잠재적으로 가치 있는 연구 영역입니다.
-    각 틈새 주제에 대해:
-    1. 주제명 (간결하게)
-    2. 틈새 영역으로 고려되는 이유
-    3. 이 주제 연구의 잠재적 영향력
-    4. 연구 방법 제안
+    {paper_info}
     
-    각 틈새 주제는 독창적이고 실행 가능해야 합니다.
+    틈새 주제란 아직 충분히 연구되지 않았지만 잠재적으로 가치 있는 연구 영역입니다.
+    
+    각 틈새 주제는 다음 형식으로 제시해주세요:
+    
+    ## 틈새 주제 1: [주제명]
+    
+    **배경**: [이 분야에서 현재까지의 연구 상황]
+    
+    **틈새 영역으로 고려되는 이유**: 
+    [왜 이 주제가 충분히 연구되지 않았는지, 어떤 측면이 간과되고 있는지]
+    
+    **연구 가치와 영향력**: 
+    [이 주제 연구가 학문적/실용적으로 어떤 가치가 있는지]
+    
+    **제안 연구 방법**: 
+    [어떤 방법론과 접근 방식으로 연구할 수 있는지]
+    
+    **관련 논문**: 
+    [위 목록에서 관련 있는 논문 참조]
+    
+    실제 논문을 기반으로 하되, 새롭고 혁신적인 연구 틈새를 찾아내주세요.
+    각 틈새 주제는 실행 가능하고, 구체적이며, 학술적 가치가 있어야 합니다.
     """
     
     with st.spinner("틈새 주제를 생성 중입니다..."):
         result = get_completion(prompt)
     
     if result:
-        return result
+        return {
+            "content": result,
+            "papers": all_papers
+        }
     else:
         return None

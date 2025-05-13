@@ -3,13 +3,25 @@ import time
 import config
 import streamlit as st
 
+# API 키 확인
+if not config.OPENAI_API_KEY:
+    st.error("OpenAI API 키가 설정되지 않았습니다. Streamlit Cloud의 Secret 또는 환경 변수에서 OPENAI_API_KEY를 설정해주세요.")
+
 # OpenAI 클라이언트 생성
-client = OpenAI(api_key=config.OPENAI_API_KEY)
+try:
+    client = OpenAI(api_key=config.OPENAI_API_KEY)
+except Exception as e:
+    st.error(f"OpenAI 클라이언트 초기화 오류: {str(e)}")
+    client = None
 
 def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATURE, max_tokens=config.MAX_TOKENS):
     """
     GPT 모델로부터 응답을 받아옵니다.
     """
+    if not client:
+        st.error("OpenAI 클라이언트가 초기화되지 않았습니다.")
+        return None
+        
     try:
         response = client.chat.completions.create(
             model=model,
@@ -24,6 +36,7 @@ def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATUR
         time.sleep(1)
         return None
 
+# 나머지 함수들은 그대로 유지
 def analyze_topic(topic):
     """
     입력된 주제를 분석하여 정의, 의미, 문제점, 해결 사례 등을 제공합니다.

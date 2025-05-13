@@ -6,8 +6,17 @@ import streamlit as st
 load_dotenv()
 
 # 필수 API 키
-OPENAI_API_KEY = st.secrets.get("OPENAI_API_KEY", os.getenv("OPENAI_API_KEY", ""))
-CROSSREF_EMAIL = st.secrets.get("CROSSREF_EMAIL", os.getenv("CROSSREF_EMAIL", ""))
+try:
+    # Streamlit Cloud에서 실행 중인 경우
+    OPENAI_API_KEY = st.secrets["OPENAI_API_KEY"]
+    CROSSREF_EMAIL = st.secrets["CROSSREF_EMAIL"]
+except (KeyError, TypeError):
+    # 로컬에서 실행 중인 경우
+    OPENAI_API_KEY = os.getenv("OPENAI_API_KEY", "")
+    CROSSREF_EMAIL = os.getenv("CROSSREF_EMAIL", "")
+    
+    if not OPENAI_API_KEY:
+        print("Warning: OPENAI_API_KEY not found")
 
 # GPT 설정
 GPT_MODEL = "gpt-4-turbo" # 또는 "gpt-3.5-turbo" (비용 절감)

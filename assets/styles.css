@@ -268,6 +268,50 @@ h1, h2, h3 {
     line-height: 1.6;
 }
 
+/* 섹션 제목 스타일 - 크기 균형을 맞춤 */
+.section-title {
+    font-size: 1.3rem;  /* 더 작은 크기로 조정 */
+    font-weight: 600;
+    margin-top: 1.5rem;
+    margin-bottom: 0.8rem;
+    color: #333;
+    display: flex;
+    align-items: center;
+}
+
+/* 이모지 크기 조정 */
+.section-title img, .section-title .emoji {
+    width: 24px;
+    height: 24px;
+    margin-right: 8px;
+    vertical-align: middle;
+}
+
+/* 본문 텍스트 스타일 - 일관성 유지 */
+.section-content {
+    font-size: 1rem;
+    line-height: 1.6;
+    margin-bottom: 1.5rem;
+    color: #444;
+}
+
+/* 전체 마크다운 헤더 크기 일관성 조정 */
+.stMarkdown h1 {
+    font-size: 1.8rem !important;
+}
+
+.stMarkdown h2 {
+    font-size: 1.5rem !important;
+}
+
+.stMarkdown h3 {
+    font-size: 1.3rem !important;
+}
+
+.stMarkdown h4 {
+    font-size: 1.1rem !important;
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
     .content-container, .paper-container {

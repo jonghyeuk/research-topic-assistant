@@ -6,7 +6,7 @@ import time
 st.markdown('<div class="content-container">', unsafe_allow_html=True)
 
 # 페이지 제목
-st.title("주제 입력")
+st.markdown('<h1 class="page-title">주제 입력</h1>', unsafe_allow_html=True)
 
 # 설명
 st.markdown("""
@@ -14,7 +14,8 @@ st.markdown("""
 AI가 해당 주제에 대한 상세 정보와 관련 이슈를 분석해 드립니다.
 """)
 
-# 주제 입력 폼
+# 주제 입력 폼 - 스타일 개선
+st.markdown('<div class="input-form-container">', unsafe_allow_html=True)
 with st.form("topic_input_form"):
     topic = st.text_input("연구 주제 또는 관심 테마", 
                           placeholder="예: 미세 플라스틱이 해양 생태계에 미치는 영향",
@@ -23,6 +24,7 @@ with st.form("topic_input_form"):
     submit_col1, submit_col2, submit_col3 = st.columns([1, 2, 1])
     with submit_col2:
         submit_button = st.form_submit_button("분석 시작하기", use_container_width=True)
+st.markdown('</div>', unsafe_allow_html=True)
 
 if submit_button and topic:
     # 입력 값 세션 상태에 저장
@@ -31,7 +33,7 @@ if submit_button and topic:
     # 타이핑 효과를 위한 컨테이너
     analysis_container = st.empty()
     
-    # 분석 시작 메시지
+    # 분석 시작 메시지 - 스타일 개선
     analysis_container.markdown('<div class="analysis-loading">AI가 주제를 분석하고 있습니다...</div>', unsafe_allow_html=True)
     
     # GPT API를 통한 주제 분석
@@ -67,14 +69,15 @@ if submit_button and topic:
                 unsafe_allow_html=True
             )
         
-        # 다음 단계로 이동 버튼
+        # 다음 단계로 이동 버튼 - 중앙 정렬 및 스타일 개선
         st.session_state.step = 2
         
-        # 버튼 가운데 정렬
+        st.markdown('<div class="button-container">', unsafe_allow_html=True)
         btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
         with btn_col2:
             if st.button("유사 주제 찾기 →", use_container_width=True):
                 st.switch_page("pages/2_Similar_Topics.py")
+        st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.error("주제 분석 중 오류가 발생했습니다. 다시 시도해 주세요.")
 
@@ -86,14 +89,15 @@ elif "topic_analysis" in st.session_state and st.session_state.topic_analysis:
         unsafe_allow_html=True
     )
     
-    # 다음 단계로 이동 버튼
+    # 다음 단계로 이동 버튼 - 중앙 정렬 및 스타일 개선
     st.session_state.step = 2
     
-    # 버튼 가운데 정렬
+    st.markdown('<div class="button-container">', unsafe_allow_html=True)
     btn_col1, btn_col2, btn_col3 = st.columns([1, 2, 1])
     with btn_col2:
         if st.button("유사 주제 찾기 →", use_container_width=True):
             st.switch_page("pages/2_Similar_Topics.py")
+    st.markdown('</div>', unsafe_allow_html=True)
 
 # 컨테이너 닫기
 st.markdown('</div>', unsafe_allow_html=True)

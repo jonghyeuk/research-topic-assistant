@@ -270,10 +270,10 @@ h1, h2, h3 {
 
 /* 섹션 제목 스타일 - 크기 균형을 맞춤 */
 .section-title {
-    font-size: 1.3rem;  /* 더 작은 크기로 조정 */
+    font-size: 1.3rem;
     font-weight: 600;
-    margin-top: 1.5rem;
-    margin-bottom: 0.8rem;
+    margin-top: 2.5rem;  /* 상단 여백 증가 */
+    margin-bottom: 1rem;
     color: #333;
     display: flex;
     align-items: center;
@@ -291,8 +291,19 @@ h1, h2, h3 {
 .section-content {
     font-size: 1rem;
     line-height: 1.6;
-    margin-bottom: 1.5rem;
+    margin-bottom: 2rem;  /* 하단 여백 증가 */
     color: #444;
+    padding-left: 10px;   /* 내용 들여쓰기 */
+    border-left: 3px solid #f0f0f0;  /* 왼쪽 경계선 추가 */
+    padding-bottom: 0.5rem;
+}
+
+/* 섹션 구분선 */
+.section-divider {
+    height: 1px;
+    background-color: #f0f0f0;
+    margin: 2rem 0;
+    width: 100%;
 }
 
 /* 전체 마크다운 헤더 크기 일관성 조정 */
@@ -310,6 +321,11 @@ h1, h2, h3 {
 
 .stMarkdown h4 {
     font-size: 1.1rem !important;
+}
+
+/* 단락 간격 증가 */
+p {
+    margin-bottom: 1.2rem;
 }
 
 /* 모바일 반응형 */

@@ -1,11 +1,22 @@
 /* 전체 앱 스타일 */
 .stApp {
     font-family: 'Roboto', 'Noto Sans KR', sans-serif;
+    background-color: #f7f7f8; /* 배경색 추가 */
 }
 
 /* 사이드바 스타일 */
 .sidebar .sidebar-content {
     background-color: #f8f9fa;
+}
+
+/* 콘텐츠 컨테이너 - Gemini/ChatGPT 스타일 */
+.content-container {
+    max-width: 768px;
+    margin: 0 auto;
+    padding: 20px 30px;
+    background-color: white;
+    border-radius: 8px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.1);
 }
 
 /* 타이핑 효과 애니메이션 */
@@ -24,13 +35,14 @@
         blink-caret .75s step-end infinite;
 }
 
-/* 논문 스타일 - A4 형식 */
+/* 논문 스타일 - 제한된 너비로 수정 */
 .paper-container {
-    max-width: 800px;
+    max-width: 700px; /* 너비 제한 */
     margin: 0 auto;
     padding: 40px;
     background-color: white;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    border-radius: 4px; /* 모서리 둥글게 */
 }
 
 .paper-title {
@@ -86,4 +98,40 @@
     background-color: #e6f7e6;
     border-left: 3px solid #4CAF50;
     font-weight: bold;
+}
+
+/* 중앙 정렬 헤더 */
+.centered-header {
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+/* 하단 정보 스타일 */
+.footer-text {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
+    margin-top: 30px;
+}
+
+/* 카드 스타일 - 유사 주제 목록에 사용 */
+.topic-card {
+    padding: 15px;
+    border-radius: 5px;
+    background-color: #f9f9f9;
+    margin-bottom: 10px;
+    transition: all 0.2s;
+}
+
+.topic-card:hover {
+    background-color: #f0f0f0;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+}
+
+/* 모바일 반응형 */
+@media (max-width: 768px) {
+    .content-container, .paper-container {
+        width: 100%;
+        padding: 15px;
+    }
 }

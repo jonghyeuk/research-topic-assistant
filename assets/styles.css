@@ -1,7 +1,7 @@
 /* 전체 앱 스타일 */
 .stApp {
     font-family: 'Roboto', 'Noto Sans KR', sans-serif;
-    background-color: #f7f7f8; /* 배경색 추가 */
+    background-color: #f7f7f8;
 }
 
 /* 사이드바 스타일 */
@@ -37,12 +37,12 @@
 
 /* 논문 스타일 - 제한된 너비로 수정 */
 .paper-container {
-    max-width: 700px; /* 너비 제한 */
+    max-width: 700px;
     margin: 0 auto;
     padding: 40px;
     background-color: white;
     box-shadow: 0 0 10px rgba(0,0,0,0.1);
-    border-radius: 4px; /* 모서리 둥글게 */
+    border-radius: 4px;
 }
 
 .paper-title {
@@ -128,10 +128,107 @@
     box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
+/* 분석 결과 스타일 */
+.analysis-loading {
+    text-align: center;
+    padding: 20px;
+    background-color: #f0f7ff;
+    border-radius: 5px;
+    margin: 20px 0;
+    font-weight: 500;
+    color: #3b7ea1;
+}
+
+.analysis-result-title {
+    font-size: 20px;
+    font-weight: bold;
+    margin: 20px 0;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.analysis-result-content {
+    background-color: #f9f9f9;
+    padding: 20px;
+    border-radius: 5px;
+    margin-bottom: 20px;
+    line-height: 1.6;
+}
+
+/* 선택된 주제 스타일 */
+.selected-topic {
+    font-size: 18px;
+    font-weight: 500;
+    margin-bottom: 20px;
+    padding: 10px;
+    border-left: 3px solid #4CAF50;
+    background-color: #f9f9f9;
+}
+
+/* 논문 로딩 메시지 */
+.paper-loading {
+    text-align: center;
+    padding: 30px;
+    background-color: #f0f7ff;
+    border-radius: 5px;
+    margin: 20px 0;
+    font-weight: 500;
+    color: #3b7ea1;
+}
+
+/* 유사 주제 카드 */
+.similar-topic-card {
+    padding: 15px;
+    border-radius: 6px;
+    background-color: white;
+    border: 1px solid #eee;
+    margin-bottom: 15px;
+    transition: all 0.2s;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+
+.similar-topic-card:hover {
+    box-shadow: 0 3px 8px rgba(0,0,0,0.1);
+    border-color: #ddd;
+}
+
+.similar-topic-title {
+    font-size: 16px;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.similar-topic-meta {
+    font-size: 12px;
+    color: #666;
+    margin-bottom: 8px;
+}
+
+.similar-topic-summary {
+    font-size: 13px;
+    line-height: 1.5;
+}
+
+/* 페이지 제목 */
+.page-title {
+    margin-bottom: 20px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
     .content-container, .paper-container {
         width: 100%;
         padding: 15px;
+    }
+    
+    .paper-container {
+        padding: 20px;
+    }
+    
+    .similar-topic-card {
+        padding: 12px;
     }
 }

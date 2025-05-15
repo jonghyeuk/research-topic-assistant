@@ -3,6 +3,45 @@ from utils.gpt_utils import analyze_topic
 import time
 import re
 
+# 섹션 제목과 내용을 포맷팅하는 함수
+def format_text_with_section_titles(text):
+    # 이미 HTML 태그가 있는지 확인
+    if '<div class="section-title">' in text:
+        return text  # 이미 포맷팅된 경우 그대로 반환
+        
+    # 제목 패턴 찾기 (## 이모지 제목 형식)
+    # 이모지 문자와 함께 사용되는 마크다운 제목을 찾는 패턴
+    pattern = r'(##\s+(?:🧬|🧩|📚|📊|🔍|✨|📝|🔬|💡|🌐|📑|🧪)?\s*.*?)(?=\n|$)'
+    
+    # 섹션별로 텍스트 분할
+    sections = re.split(pattern, text)
+    
+    # 빈 문자열 제거
+    sections = [s for s in sections if s.strip()]
+    
+    formatted_parts = []
+    
+    for i in range(0, len(sections)):
+        section = sections[i].strip()
+        
+        if section.startswith('##'):
+            # 제목 처리
+            title_text = section.replace('##', '').strip()
+            formatted_parts.append(f'<div class="section-title">{title_text}</div>')
+        else:
+            # 내용 처리
+            # 여러 단락으로 나누기
+            paragraphs = section.split('\n\n')
+            for p in paragraphs:
+                if p.strip():
+                    formatted_parts.append(f'<div class="section-content">{p.strip()}</div>')
+            
+            # 섹션 구분선 추가 (마지막 섹션이 아닌 경우)
+            if i < len(sections) - 1:
+                formatted_parts.append('<div class="section-divider"></div>')
+    
+    return '\n'.join(formatted_parts)
+
 # 콘텐츠 컨테이너로 감싸기
 st.markdown('<div class="content-container">', unsafe_allow_html=True)
 
@@ -26,30 +65,6 @@ with st.form("topic_input_form"):
     with submit_col2:
         submit_button = st.form_submit_button("분석 시작하기", use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
-
-# 제목 포맷팅 함수 추가 - 마크다운 제목을 section-title 클래스로 변환
-def format_text_with_section_titles(text):
-    # 제목 패턴 찾기 (## 이모지 제목 형식)
-    pattern = r'##\s+(.*?)(?=\n|$)'
-    
-    # 제목을 section-title 클래스로 변환
-    formatted_text = re.sub(pattern, r'<div class="section-title">\1</div>', text)
-    
-    # 단락을 section-content 클래스로 변환 (제목 아래 단락)
-    paragraphs = formatted_text.split('\n\n')
-    new_paragraphs = []
-    
-    for i, para in enumerate(paragraphs):
-        if para.startswith('<div class="section-title">'):
-            new_paragraphs.append(para)
-            # 다음 단락이 있고 제목이 아니라면 section-content로 래핑
-            if i+1 < len(paragraphs) and not paragraphs[i+1].startswith('<div class="section-title">'):
-                next_para = paragraphs[i+1]
-                paragraphs[i+1] = f'<div class="section-content">{next_para}</div>'
-        else:
-            new_paragraphs.append(para)
-    
-    return '\n\n'.join(new_paragraphs)
 
 if submit_button and topic:
     # 입력 값 세션 상태에 저장
@@ -76,7 +91,7 @@ if submit_button and topic:
         analysis_container.markdown('<div class="analysis-result-title">주제 분석 결과</div>', unsafe_allow_html=True)
         text_container = analysis_container.empty()
         
-        # 스타일이 적용된 전체 텍스트 표시 (타이핑 효과 대신 바로 표시)
+        # 스타일이 적용된 전체 텍스트 표시
         text_container.markdown(formatted_text, unsafe_allow_html=True)
         
         # 다음 단계로 이동 버튼 - 중앙 정렬 및 스타일 개선

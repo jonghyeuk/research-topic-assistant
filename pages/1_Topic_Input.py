@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.gpt_utils import analyze_topic
 import time
+import re
 
 # 콘텐츠 컨테이너로 감싸기
 st.markdown('<div class="content-container">', unsafe_allow_html=True)
@@ -26,6 +27,30 @@ with st.form("topic_input_form"):
         submit_button = st.form_submit_button("분석 시작하기", use_container_width=True)
 st.markdown('</div>', unsafe_allow_html=True)
 
+# 제목 포맷팅 함수 추가 - 마크다운 제목을 section-title 클래스로 변환
+def format_text_with_section_titles(text):
+    # 제목 패턴 찾기 (## 이모지 제목 형식)
+    pattern = r'##\s+(.*?)(?=\n|$)'
+    
+    # 제목을 section-title 클래스로 변환
+    formatted_text = re.sub(pattern, r'<div class="section-title">\1</div>', text)
+    
+    # 단락을 section-content 클래스로 변환 (제목 아래 단락)
+    paragraphs = formatted_text.split('\n\n')
+    new_paragraphs = []
+    
+    for i, para in enumerate(paragraphs):
+        if para.startswith('<div class="section-title">'):
+            new_paragraphs.append(para)
+            # 다음 단락이 있고 제목이 아니라면 section-content로 래핑
+            if i+1 < len(paragraphs) and not paragraphs[i+1].startswith('<div class="section-title">'):
+                next_para = paragraphs[i+1]
+                paragraphs[i+1] = f'<div class="section-content">{next_para}</div>'
+        else:
+            new_paragraphs.append(para)
+    
+    return '\n\n'.join(new_paragraphs)
+
 if submit_button and topic:
     # 입력 값 세션 상태에 저장
     st.session_state.topic = topic
@@ -43,31 +68,16 @@ if submit_button and topic:
         # 분석 결과 저장
         st.session_state.topic_analysis = analysis_result
         
-        # 타이핑 효과 구현 (개선된 버전)
-        full_text = analysis_result["full_text"]
-        displayed_text = ""
+        # 원본 텍스트를 스타일이 적용된 HTML로 변환
+        original_text = analysis_result["full_text"]
+        formatted_text = format_text_with_section_titles(original_text)
         
-        # 컨테이너 준비
+        # 타이핑 효과 구현 (개선된 버전)
         analysis_container.markdown('<div class="analysis-result-title">주제 분석 결과</div>', unsafe_allow_html=True)
         text_container = analysis_container.empty()
         
-        # 최대 2000자까지만 애니메이션 적용 (성능 최적화)
-        max_length = min(len(full_text), 2000)
-        
-        for i in range(max_length + 1):
-            displayed_text = full_text[:i]
-            text_container.markdown(
-                f'<div class="analysis-result-content">{displayed_text}</div>', 
-                unsafe_allow_html=True
-            )
-            time.sleep(0.005)  # 더 빠른 속도로 조정
-        
-        # 나머지 텍스트 표시
-        if len(full_text) > max_length:
-            text_container.markdown(
-                f'<div class="analysis-result-content">{full_text}</div>', 
-                unsafe_allow_html=True
-            )
+        # 스타일이 적용된 전체 텍스트 표시 (타이핑 효과 대신 바로 표시)
+        text_container.markdown(formatted_text, unsafe_allow_html=True)
         
         # 다음 단계로 이동 버튼 - 중앙 정렬 및 스타일 개선
         st.session_state.step = 2
@@ -83,11 +93,11 @@ if submit_button and topic:
 
 # 세션에 분석 결과가 있으면 표시
 elif "topic_analysis" in st.session_state and st.session_state.topic_analysis:
+    original_text = st.session_state.topic_analysis["full_text"]
+    formatted_text = format_text_with_section_titles(original_text)
+    
     st.markdown('<div class="analysis-result-title">주제 분석 결과</div>', unsafe_allow_html=True)
-    st.markdown(
-        f'<div class="analysis-result-content">{st.session_state.topic_analysis["full_text"]}</div>',
-        unsafe_allow_html=True
-    )
+    st.markdown(formatted_text, unsafe_allow_html=True)
     
     # 다음 단계로 이동 버튼 - 중앙 정렬 및 스타일 개선
     st.session_state.step = 2

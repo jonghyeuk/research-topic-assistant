@@ -42,16 +42,28 @@ def format_text_with_section_titles(text):
     
     return '\n'.join(formatted_parts)
 
-# 타이핑 효과 함수
-def typing_effect(container, text, speed=0.01, chunk_size=3):
+# 타이핑 효과 함수 - 개선된 버전
+def typing_effect(container, text, speed=0.03, chunk_size=15):
     full_text = text
     displayed_text = ""
     
-    # 한번에 표시할 문자 수와 지연 시간 설정
+    # 시각적 효과를 위한 지연 시간 설정
+    initial_delay = 0.8  # 초기 지연 시간
+    time.sleep(initial_delay)  # 먼저 약간의 지연으로 기대감 생성
+    
+    # 첫 50자는 더 빠르게, 그 후로는 정상 속도로
+    # 이렇게 하면 긴 텍스트도 지루하지 않고 시작을 빠르게 보여줄 수 있음
     for i in range(0, len(full_text), chunk_size):
         displayed_text = full_text[:i + chunk_size]
         container.markdown(displayed_text, unsafe_allow_html=True)
-        time.sleep(speed)
+        
+        # 텍스트 길이에 따른 속도 조절
+        if i < 100:  # 처음 100자는 빠르게
+            time.sleep(speed * 0.5)
+        elif i > len(full_text) - 200:  # 마지막 200자는 약간 빠르게 (너무 느리면 지루함)
+            time.sleep(speed * 0.7)
+        else:  # 중간 부분은 정상 속도
+            time.sleep(speed)
 
 # 단계별 분석 상태 메시지 표시 함수
 def show_analysis_step(container, step_message, delay=0.6):
@@ -93,13 +105,13 @@ if submit_button and topic:
     result_title = st.empty()
     result_content = st.empty()
     
-    # 단계별 분석 상태 표시
-    show_analysis_step(analysis_status, "🔍 주제 키워드를 추출하고 있습니다...")
-    show_analysis_step(analysis_status, "📚 관련 학문 분야를 식별하고 있습니다...")
-    show_analysis_step(analysis_status, "🧠 주제의 핵심 개념을 정의하고 있습니다...")
-    show_analysis_step(analysis_status, "🔄 학술 데이터베이스에서 관련 자료를 검색하고 있습니다...")
-    show_analysis_step(analysis_status, "⚙️ 수집된 정보를 종합적으로 분석하고 있습니다...")
-    show_analysis_step(analysis_status, "📝 최종 분석 결과를 생성하고 있습니다...")
+    # 단계별 분석 상태 표시 - 시간 간격 조정
+    show_analysis_step(analysis_status, "🔍 주제 키워드를 추출하고 있습니다...", delay=0.7)
+    show_analysis_step(analysis_status, "📚 관련 학문 분야를 식별하고 있습니다...", delay=0.7)
+    show_analysis_step(analysis_status, "🧠 주제의 핵심 개념을 정의하고 있습니다...", delay=0.8)
+    show_analysis_step(analysis_status, "🔄 학술 데이터베이스에서 관련 자료를 검색하고 있습니다...", delay=0.9)
+    show_analysis_step(analysis_status, "⚙️ 수집된 정보를 종합적으로 분석하고 있습니다...", delay=0.8)
+    show_analysis_step(analysis_status, "📝 최종 분석 결과를 생성하고 있습니다...", delay=0.8)
     
     # GPT API를 통한 주제 분석
     analysis_result = analyze_topic(topic)
@@ -118,8 +130,8 @@ if submit_button and topic:
         # 결과 제목 표시
         result_title.markdown('<div class="analysis-result-title">주제 분석 결과</div>', unsafe_allow_html=True)
         
-        # 타이핑 효과로 결과 표시
-        typing_effect(result_content, formatted_text, speed=0.005, chunk_size=5)
+        # 타이핑 효과로 결과 표시 - 수정된 타이핑 효과 함수 사용
+        typing_effect(result_content, formatted_text, speed=0.03, chunk_size=15)
         
         # 다음 단계로 이동 버튼 - 중앙 정렬 및 스타일 개선
         st.session_state.step = 2
@@ -150,6 +162,3 @@ elif "topic_analysis" in st.session_state and st.session_state.topic_analysis:
         if st.button("유사 주제 찾기 →", use_container_width=True):
             st.switch_page("pages/2_Similar_Topics.py")
     st.markdown('</div>', unsafe_allow_html=True)
-
-# 컨테이너 닫기
-st.markdown('</div>', unsafe_allow_html=True)

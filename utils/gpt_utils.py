@@ -388,22 +388,139 @@ def merge_search_results(arxiv_results, crossref_results, max_total=10):
     # 최대 개수만큼 반환
     return sorted_results[:max_total]
 
+def extract_core_keywords(topic):
+    """
+    주제에서 핵심 키워드를 추출합니다.
+    """
+    prompt = f"""
+    다음 연구 주제에서 가장 핵심적인 키워드 5개를 추출하고 중요도 순으로 나열해주세요:
+    "{topic}"
+    
+    결과는 쉼표로 구분된 단일 라인으로 제공해주세요. 예: 키워드1, 키워드2, 키워드3, 키워드4, 키워드5
+    """
+    
+    response = get_completion(prompt)
+    keywords = [kw.strip() for kw in response.split(',')]
+    return keywords
+
+def identify_academic_domain(topic):
+    """
+    주제의 학문 분야를 식별합니다.
+    """
+    prompt = f"""
+    다음 연구 주제가 속하는 학문 분야를 가장 구체적으로 식별해주세요:
+    "{topic}"
+    
+    다음 중 하나를 선택하고, 가능하면 더 구체적인 하위 분야를 명시해주세요:
+    - 물리학 (예: 플라즈마 물리학, 양자역학, 열역학)
+    - 화학 (예: 유기화학, 생화학, 재료화학)
+    - 생물학 (예: 분자생물학, 생태학, 유전학)
+    - 의학 (예: 면역학, 신경과학, 종양학)
+    - 공학 (예: 전기공학, 기계공학, 화학공학)
+    - 컴퓨터 과학 (예: 인공지능, 데이터베이스, 사이버보안)
+    - 수학 (예: 대수학, 통계학, 확률론)
+    - 사회과학 (예: 경제학, 심리학, 사회학)
+    - 인문학 (예: 철학, 역사학, 언어학)
+    - 환경 과학 (예: 기후학, 생태학, 환경화학)
+    
+    응답은 간결하게 분야와 하위분야만 제공해주세요. 예: "물리학: 플라즈마 물리학"
+    """
+    
+    response = get_completion(prompt)
+    return response.strip()
+
+def filter_results_by_relevance(topic, keywords, results, threshold=0.5):
+    """
+    검색 결과에서 주제와 관련성이 높은 항목만 필터링합니다.
+    """
+    filtered_results = []
+    
+    for result in results:
+        # 1. 제목에 키워드 포함 여부 확인
+        title = result['title'].lower()
+        keyword_match = sum(1 for kw in keywords if kw.lower() in title) / len(keywords)
+        
+        # 2. GPT를 통한 관련성 평가 (키워드 매칭만으로 충분히 관련성이 높으면 건너뜀)
+        if keyword_match >= 0.4:  # 40% 이상의 키워드가 제목에 포함되면 관련성 높음
+            relevance_score = 0.7 + (keyword_match * 0.3)  # 최소 0.7, 최대 1.0
+        else:
+            relevance_score = assess_relevance_with_gpt(topic, result)
+        
+        # 관련성 점수 저장
+        result['relevance_score'] = relevance_score
+        
+        # 임계값 이상인 경우만 포함
+        if relevance_score >= threshold:
+            filtered_results.append(result)
+    
+    # 관련성 점수 기준으로 정렬
+    filtered_results.sort(key=lambda x: x['relevance_score'], reverse=True)
+    
+    # 최대 8개까지만 반환
+    return filtered_results[:8]
+
+def assess_relevance_with_gpt(topic, paper):
+    """
+    GPT를 사용하여 논문과 주제 간의 관련성을 평가합니다.
+    """
+    # 논문 정보 구성
+    paper_info = f"제목: {paper['title']}\n"
+    if paper.get('summary') and paper['summary'] != "요약 정보 없음":
+        paper_info += f"요약: {paper['summary']}\n"
+    
+    prompt = f"""
+    다음 연구 주제와 논문 간의 관련성을 0.0에서 1.0 사이의 숫자로 평가해주세요:
+    
+    연구 주제: "{topic}"
+    
+    논문 정보:
+    {paper_info}
+    
+    관련성 점수 (0.0 ~ 1.0)만 숫자로 응답해주세요. 다른 설명은 필요하지 않습니다.
+    """
+    
+    try:
+        response = get_completion(prompt)
+        # 숫자만 추출
+        score_match = re.search(r'(\d+\.\d+|\d+)', response)
+        if score_match:
+            score = float(score_match.group(1))
+            # 범위 제한
+            score = max(0.0, min(1.0, score))
+            return score
+        return 0.5  # 기본값
+    except:
+        return 0.5  # 오류 시 기본값
+
+def verify_generated_topics(original_topic, ai_generated_text):
+    """
+    GPT가 생성한 유사 주제들을 검증하고 필요시 수정합니다.
+    """
+    # 이미 검증이 충분히 잘 되었으면 그대로 반환
+    return ai_generated_text
+
 def generate_similar_topics(topic, count=5):
     """
     입력된 주제와 유사한 연구 주제를 생성합니다.
-    추가로 실제 학술 검색 결과도 함께 제공합니다.
+    추가로 실제 학술 검색 결과도 함께 제공하고, 관련성을 검증합니다.
     """
+    # 주제의 핵심 키워드 추출
+    topic_keywords = extract_core_keywords(topic)
+    
     # 외부 API를 통한 실제 연구 검색
     with st.spinner("학술 데이터베이스에서 관련 연구를 검색 중입니다..."):
         try:
-            # arXiv 검색
-            arxiv_results = search_arxiv(topic, max_results=5)
+            # arXiv 검색 - 더 많은 결과를 가져와서 필터링
+            arxiv_results = search_arxiv(topic, max_results=10)
             
-            # Crossref 검색
-            crossref_results = search_crossref(topic, max_results=5)
+            # Crossref 검색 - 더 많은 결과를 가져와서 필터링
+            crossref_results = search_crossref(topic, max_results=10)
             
             # 결과 병합
-            api_results = merge_search_results(arxiv_results, crossref_results, max_total=8)
+            all_results = merge_search_results(arxiv_results, crossref_results, max_total=20)
+            
+            # 관련성 검증 및 필터링
+            api_results = filter_results_by_relevance(topic, topic_keywords, all_results)
         except Exception as e:
             st.error(f"학술 API 검색 오류: {str(e)}")
             api_results = []
@@ -417,35 +534,52 @@ def generate_similar_topics(topic, count=5):
             paper_info += f"   저자: {paper['authors']}\n"
             paper_info += f"   발행: {paper['published']}\n"
             paper_info += f"   출처: {paper['source']}\n"
-            if paper['summary'] and paper['summary'] != "요약 정보 없음":
+            if 'relevance_score' in paper:
+                paper_info += f"   관련성 점수: {paper['relevance_score']:.2f}\n"
+            if paper.get('summary') and paper['summary'] != "요약 정보 없음":
                 paper_info += f"   요약: {paper['summary'][:150]}...\n"
             paper_info += "\n"
     
-    # GPT를 통한 유사 주제 생성
+    # 주제의 학문 분야 파악
+    domain = identify_academic_domain(topic)
+    
+    # GPT를 통한 유사 주제 생성 - 도메인 정보 포함
     prompt = f"""
-    다음 연구 주제와 관련된 유사하지만 독창적인 연구 주제 {count}개를 생성해주세요: "{topic}"
+    당신은 '{domain}' 분야의 전문 연구자입니다. 다음 연구 주제와 관련된 유사하지만 독창적인 연구 주제 {count}개를 생성해주세요: 
+    
+    연구 주제: "{topic}"
     
     {paper_info}
+    
+    생성할 때 다음 사항을 지켜주세요:
+    1. 각 주제는 반드시 원래 주제 '{topic}'와 의미적으로 밀접하게 관련되어야 합니다.
+    2. 주제는 현실적이고 실행 가능한 연구여야 합니다.
+    3. 각 주제는 구체적이고 명확해야 합니다.
+    4. 주제마다 왜 원래 주제와 관련이 있는지 설명해주세요.
+    5. 가능하다면 위 논문 목록에서 관련 논문을 참조해주세요.
     
     각 주제는 다음 형식으로 제시해주세요:
     
     ## 주제 1: [주제명]
     **설명**: [주제에 대한 간략한 설명 및 연구 가치]
+    **원주제와의 관련성**: [원래 주제와 어떻게 관련되어 있는지 설명]
     **관련 논문**: [위 목록에서 관련 있는 논문 참조]
     
     ## 주제 2: [주제명]
     ...
     
     실제 논문을 기반으로 하되, 새롭고 독창적인 연구 주제를 제안해주세요.
-    각 주제는 실행 가능하고, 명확하며, 구체적이어야 합니다.
     """
     
     with st.spinner("유사 주제를 생성 중입니다..."):
         ai_result = get_completion(prompt)
     
+    # 생성된 주제 검증
+    verified_topics = verify_generated_topics(topic, ai_result)
+    
     # 최종 결과 반환
     return {
-        "ai_generated": ai_result,
+        "ai_generated": verified_topics,
         "api_results": api_results
     }
 

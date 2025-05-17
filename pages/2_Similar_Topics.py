@@ -22,16 +22,21 @@ def show_analysis_step(container, step_message, delay=0.5):
     container.markdown(f'<div class="analysis-step-message">{step_message}</div>', unsafe_allow_html=True)
     time.sleep(delay)
 
-# 타이핑 효과 함수
-def typing_effect(container, text, speed=0.01, chunk_size=3):
+# 타이핑 효과 함수 수정
+def typing_effect(container, text, speed=0.05, chunk_size=10):
     full_text = text
     displayed_text = ""
     
-    # 한번에 표시할 문자 수와 지연 시간 설정
+    # 더 큰 청크와 더 느린 속도로 설정
     for i in range(0, len(full_text), chunk_size):
         displayed_text = full_text[:i + chunk_size]
         container.markdown(displayed_text, unsafe_allow_html=True)
-        time.sleep(speed)
+        
+        # 짧은 텍스트는 건너뛰기 (불필요한 업데이트 줄이기)
+        if i < 50:  # 초반 부분은 빠르게 표시
+            time.sleep(speed * 0.5)
+        else:
+            time.sleep(speed)
 
 # 메인 코드 시작
 st.title("2. 유사 연구 주제")

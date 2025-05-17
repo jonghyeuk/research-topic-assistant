@@ -23,8 +23,8 @@ def get_completion(prompt, model=config.GPT_MODEL, temperature=config.TEMPERATUR
 ✅ 답변은 **구조화된 마크다운 형식**으로 제공  
 🔹 **답변 구성**  
 - 🧠 개요  
-- 🔬 기전 또는 작동 원리  
-- 🧩 핵심 변수 또는 치료/요인  
+- 🔬 메커니즘 
+- 🧩 핵심 변수 또는 요인  
 - 📊 논문 비교 및 근거 요약  
 - 🧾 결론  
 - 🔗 출처 테이블  

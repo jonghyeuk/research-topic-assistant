@@ -502,163 +502,140 @@ def verify_generated_topics(original_topic, ai_generated_text):
 def generate_similar_topics(topic, count=5):
     """
     입력된 주제와 유사한 연구 주제를 생성합니다.
-    추가로 실제 학술 검색 결과도 함께 제공하고, 관련성을 검증합니다.
+    GPT의 내장 지식을 최대한 활용하여 풍부한 관련 주제 제공
     """
-    # 주제의 핵심 키워드 추출
+    # 주제의 핵심 키워드와 분야 식별
     topic_keywords = extract_core_keywords(topic)
+    domain = identify_academic_domain(topic)
     
-    # 외부 API를 통한 실제 연구 검색
+    # 외부 API 검색 시도
     with st.spinner("학술 데이터베이스에서 관련 연구를 검색 중입니다..."):
         try:
-            # arXiv 검색 - 더 많은 결과를 가져와서 필터링
             arxiv_results = search_arxiv(topic, max_results=10)
-            
-            # Crossref 검색 - 더 많은 결과를 가져와서 필터링
             crossref_results = search_crossref(topic, max_results=10)
-            
-            # 결과 병합
             all_results = merge_search_results(arxiv_results, crossref_results, max_total=20)
-            
-            # 관련성 검증 및 필터링
             api_results = filter_results_by_relevance(topic, topic_keywords, all_results)
         except Exception as e:
-            st.error(f"학술 API 검색 오류: {str(e)}")
+            st.warning(f"외부 학술 데이터베이스 검색 중 오류가 발생했습니다. GPT 지식을 활용합니다.")
             api_results = []
     
     # 검색된 논문 정보를 프롬프트에 추가
     paper_info = ""
     if api_results:
-        paper_info = "다음은 해당 주제와 관련된 실제 논문 정보입니다. 이를 참고하여 유사 주제를 생성해주세요:\n\n"
+        paper_info = "다음은 해당 주제와 관련된 실제 논문 정보입니다. 이를 참고하되 이에 국한되지 않고 더 풍부한 주제를 생성해주세요:\n\n"
         for i, paper in enumerate(api_results, 1):
             paper_info += f"{i}. 제목: {paper['title']}\n"
-            paper_info += f"   저자: {paper['authors']}\n"
-            paper_info += f"   발행: {paper['published']}\n"
-            paper_info += f"   출처: {paper['source']}\n"
-            if 'relevance_score' in paper:
-                paper_info += f"   관련성 점수: {paper['relevance_score']:.2f}\n"
+            if 'authors' in paper and paper['authors']:
+                paper_info += f"   저자: {paper['authors']}\n"
+            if 'published' in paper:
+                paper_info += f"   발행: {paper['published']}\n"
             if paper.get('summary') and paper['summary'] != "요약 정보 없음":
                 paper_info += f"   요약: {paper['summary'][:150]}...\n"
             paper_info += "\n"
     
-    # 주제의 학문 분야 파악
-    domain = identify_academic_domain(topic)
-    
-    # GPT를 통한 유사 주제 생성 - 도메인 정보 포함
+    # GPT를 통한 유사 주제 생성 - 구조화된 프롬프트 사용
     prompt = f"""
-    당신은 '{domain}' 분야의 전문 연구자입니다. 다음 연구 주제와 관련된 유사하지만 독창적인 연구 주제 {count}개를 생성해주세요: 
+    당신은 '{domain}' 분야의 저명한 교수이자 연구자입니다.
+    다음 연구 주제 "{topic}"와 관련된 유사하면서도 독창적인 연구 주제 {count}개를 생성하려 합니다.
     
-    연구 주제: "{topic}"
+    {paper_info if paper_info else ""}
     
-    {paper_info}
-    
-    생성할 때 다음 사항을 지켜주세요:
-    1. 각 주제는 반드시 원래 주제 '{topic}'와 의미적으로 밀접하게 관련되어야 합니다.
-    2. 주제는 현실적이고 실행 가능한 연구여야 합니다.
-    3. 각 주제는 구체적이고 명확해야 합니다.
-    4. 주제마다 왜 원래 주제와 관련이 있는지 설명해주세요.
-    5. 가능하다면 위 논문 목록에서 관련 논문을 참조해주세요.
-    
-    각 주제는 다음 형식으로 제시해주세요:
+    각 유사 주제에 대해 다음 구조로 상세히 설명해주세요:
     
     ## 주제 1: [주제명]
-    **설명**: [주제에 대한 간략한 설명 및 연구 가치]
-    **원주제와의 관련성**: [원래 주제와 어떻게 관련되어 있는지 설명]
-    **관련 논문**: [위 목록에서 관련 있는 논문 참조]
+    
+    ✅ **개념 정의 및 개요**
+    - 이 연구 주제가 무엇인지 간결하게 정의하고 개략적으로 설명
+    
+    ✅ **원주제와의 관련성**
+    - 이 주제가 원래 주제인 "{topic}"와 어떻게 연관되는지 구체적으로 설명
+    
+    ✅ **연구 방법론 또는 접근법**
+    - 이 주제를 연구하기 위한 주요 방법론 또는 접근법 제안
+    
+    ✅ **학술적 중요성 및 잠재적 영향**
+    - 이 연구가 학계나 산업에 기여할 수 있는 잠재적 가치 설명
+    
+    ✅ **관련 연구자 또는 논문**
+    - 이 주제와 관련된 실제 연구자나 논문 언급 (알고 있는 경우)
     
     ## 주제 2: [주제명]
     ...
     
-    실제 논문을 기반으로 하되, 새롭고 독창적인 연구 주제를 제안해주세요.
+    각 주제는 실제로 연구될 가치가 있는 구체적이고 명확한 주제여야 합니다.
+    최신 연구 동향을 반영하되, 너무 일반적이거나 모호한 주제는 피해주세요.
+    주제들은 원래 주제인 "{topic}"와 명확하게 연관되어야 하지만, 단순히 동일한 주제의 다른 표현이 아닌 새로운 연구 방향을 제시해야 합니다.
     """
     
     with st.spinner("유사 주제를 생성 중입니다..."):
         ai_result = get_completion(prompt)
     
-    # 생성된 주제 검증
-    verified_topics = verify_generated_topics(topic, ai_result)
+    # API 결과와 GPT 생성 결과 통합
+    combined_results = []
     
-    # 최종 결과 반환
+    # 기존 API 결과 추가 (관련성 점수가 높은 것만)
+    for paper in api_results:
+        if 'relevance_score' in paper and paper['relevance_score'] >= 0.65:  # 관련성 65% 이상만 포함
+            combined_results.append({
+                'title': paper['title'],
+                'authors': paper.get('authors', '정보 없음'),
+                'published': paper.get('published', '정보 없음'),
+                'source': paper.get('source', 'API 검색 결과'),
+                'summary': paper.get('summary', '요약 정보 없음'),
+                'relevance_score': paper.get('relevance_score', 0.5),
+                'is_api_result': True,
+                'is_gpt_generated': False
+            })
+    
+    # 파싱된 GPT 생성 결과 추가
+    gpt_topics = parse_gpt_generated_topics(ai_result)
+    for gpt_topic in gpt_topics:
+        # API 결과가 너무 적거나, 최대 개수에 도달하지 않았으면 GPT 생성 주제 추가
+        if len(combined_results) < count:
+            gpt_topic['is_api_result'] = False
+            gpt_topic['is_gpt_generated'] = True
+            gpt_topic['relevance_score'] = 0.9  # GPT 생성 주제는 높은 관련성 점수 부여
+            combined_results.append(gpt_topic)
+    
+    # 결과가 여전히 부족하면 더 많은 GPT 생성 주제 추가
+    if len(combined_results) < 3:
+        additional_prompt = f"""
+        당신은 '{domain}' 분야의 전문가입니다. 
+        연구 주제 "{topic}"와 관련된 추가적인 연구 주제 3개를 더 생성해주세요.
+        앞서 생성한 주제와 겹치지 않고, 더 폭넓은 관점에서 연관된 주제를 제안해주세요.
+        
+        각 주제는 다음 형식으로 제시해주세요:
+        
+        ## 주제: [주제명]
+        **설명**: [주제에 대한 간략한 설명]
+        **관련성**: [원래 주제와의 관련성]
+        **중요성**: [연구의 중요성]
+        
+        주제는 구체적이고 실행 가능해야 하며, 현대 연구 동향을 반영해야 합니다.
+        """
+        
+        try:
+            additional_result = get_completion(additional_prompt)
+            additional_topics = parse_additional_topics(additional_result)
+            
+            for topic in additional_topics:
+                if len(combined_results) < count:
+                    topic['is_api_result'] = False
+                    topic['is_gpt_generated'] = True
+                    topic['relevance_score'] = 0.85
+                    combined_results.append(topic)
+        except:
+            pass
+    
+    # 관련성 점수로 정렬
+    combined_results.sort(key=lambda x: x.get('relevance_score', 0), reverse=True)
+    
+    # 최종 결과 반환 (최대 count개)
     return {
-        "ai_generated": verified_topics,
-        "api_results": api_results
+        "ai_generated": ai_result,
+        "api_results": api_results,
+        "combined_results": combined_results[:count]
     }
-
-def generate_paper_structure(topic):
-    """
-    선택된 주제에 대한 논문 구조를 생성합니다.
-    """
-    # 먼저 실제 논문 검색
-    arxiv_papers = search_arxiv(topic, max_results=3)
-    crossref_papers = search_crossref(topic, max_results=3)
-    all_papers = merge_search_results(arxiv_papers, crossref_papers, max_total=5)
-    
-    # 검색된 논문 정보를 포함한 프롬프트 생성
-    paper_info = ""
-    if all_papers:
-        paper_info = "다음은 해당 주제와 관련된 실제 논문 정보입니다. 이를 참고하여 논문 구조를 생성해주세요:\n\n"
-        for i, paper in enumerate(all_papers, 1):
-            paper_info += f"{i}. 제목: {paper['title']}\n"
-            paper_info += f"   저자: {paper['authors']}\n"
-            paper_info += f"   발행: {paper['published']}\n"
-            paper_info += f"   출처: {paper['source']}\n"
-            if paper['summary'] and paper['summary'] != "요약 정보 없음":
-                paper_info += f"   요약: {paper['summary']}\n"
-            paper_info += "\n"
-    
-    prompt = f"""
-    다음 연구 주제에 대한 학술 논문 구조를 생성해주세요: "{topic}"
-    
-    {paper_info}
-    
-    논문은 다음 섹션을 포함해야 합니다:
-    
-    # [논문 제목]
-    
-    ## 초록
-    [연구의 목적, 방법, 결과, 의의를 요약 (200-250단어)]
-    
-    ## 1. 서론
-    ### 1.1 연구 배경
-    ### 1.2 연구 목적 및 질문
-    ### 1.3 연구의 중요성
-    
-    ## 2. 선행 연구 검토
-    ### 2.1 이론적 배경
-    ### 2.2 관련 연구 동향
-    ### 2.3 연구 공백 및 본 연구의 위치
-    
-    ## 3. 연구 방법
-    ### 3.1 연구 설계
-    ### 3.2 데이터 수집 방법
-    ### 3.3 분석 방법
-    
-    ## 4. 예상 결과
-    ### 4.1 주요 발견
-    ### 4.2 결과 해석
-    
-    ## 5. 결론 및 논의
-    ### 5.1 연구 요약
-    ### 5.2 연구의 의의
-    ### 5.3 한계점 및 향후 연구 방향
-    
-    ## 참고문헌
-    [실제 논문을 정확한 인용 형식으로 나열]
-    
-    각 섹션에 구체적인 내용을 작성해주세요. 실제 논문처럼 학술적이고 체계적이어야 합니다.
-    참고문헌은 제공된 실제 논문을 포함하여 정확한 인용 형식으로 작성해주세요.
-    """
-    
-    with st.spinner("논문 구조를 생성 중입니다... (약 1분 소요)"):
-        result = get_completion(prompt, max_tokens=2500)
-    
-    if result:
-        return {
-            "content": result,
-            "papers": all_papers
-        }
-    else:
-        return None
-
 def generate_niche_topics(topic, count=4):
     """
     선택된 주제와 관련된 틈새 연구 주제를 제안합니다.
@@ -720,3 +697,78 @@ def generate_niche_topics(topic, count=4):
         }
     else:
         return None
+
+def parse_gpt_generated_topics(gpt_text):
+    """
+    GPT가 생성한 텍스트에서 개별 주제를 구조화된 형태로 추출합니다.
+    """
+    topics = []
+    
+    # 정규 표현식으로 '## 주제:' 형식으로 시작하는 섹션 분리
+    import re
+    topic_pattern = r'##\s+주제\s+\d+:\s+(.*?)(?=##\s+주제|$)'
+    topic_matches = re.finditer(topic_pattern, gpt_text, re.DOTALL)
+    
+    for match in topic_matches:
+        topic_text = match.group(1).strip()
+        
+        # 제목 추출
+        title = topic_text.split('\n')[0].strip()
+        
+        # 각 섹션 추출
+        concept = re.search(r'✅\s+\*\*개념 정의 및 개요\*\*(.*?)(?=✅|\Z)', topic_text, re.DOTALL)
+        relevance = re.search(r'✅\s+\*\*원주제와의 관련성\*\*(.*?)(?=✅|\Z)', topic_text, re.DOTALL)
+        methodology = re.search(r'✅\s+\*\*연구 방법론 또는 접근법\*\*(.*?)(?=✅|\Z)', topic_text, re.DOTALL)
+        importance = re.search(r'✅\s+\*\*학술적 중요성 및 잠재적 영향\*\*(.*?)(?=✅|\Z)', topic_text, re.DOTALL)
+        references = re.search(r'✅\s+\*\*관련 연구자 또는 논문\*\*(.*?)(?=✅|\Z)', topic_text, re.DOTALL)
+        
+        # 결과 구성
+        topic_info = {
+            'title': title,
+            'summary': concept.group(1).strip() if concept else '',
+            'relevance_to_original': relevance.group(1).strip() if relevance else '',
+            'methodology': methodology.group(1).strip() if methodology else '',
+            'importance': importance.group(1).strip() if importance else '',
+            'references': references.group(1).strip() if references else '',
+            'source': 'GPT 생성',
+            'authors': '자동 생성됨',
+            'published': '현재'
+        }
+        
+        topics.append(topic_info)
+    
+    return topics
+
+def parse_additional_topics(text):
+    """
+    추가 생성된 GPT 주제를 파싱합니다.
+    """
+    topics = []
+    
+    # 정규 표현식으로 '## 주제:' 형식으로 시작하는 섹션 분리
+    import re
+    topic_pattern = r'##\s+주제:\s+(.*?)(?=##\s+주제:|$)'
+    topic_matches = re.finditer(topic_pattern, text, re.DOTALL)
+    
+    for match in topic_matches:
+        topic_text = match.group(1).strip()
+        
+        # 제목 추출
+        title = topic_text.split('\n')[0].strip()
+        
+        # 각 섹션 추출
+        explanation = re.search(r'\*\*설명\*\*:\s+(.*?)(?=\*\*|\Z)', topic_text, re.DOTALL)
+        relevance = re.search(r'\*\*관련성\*\*:\s+(.*?)(?=\*\*|\Z)', topic_text, re.DOTALL)
+        importance = re.search(r'\*\*중요성\*\*:\s+(.*?)(?=\*\*|\Z)', topic_text, re.DOTALL)
+        
+        topics.append({
+            'title': title,
+            'summary': explanation.group(1).strip() if explanation else '',
+            'relevance_to_original': relevance.group(1).strip() if relevance else '',
+            'importance': importance.group(1).strip() if importance else '',
+            'source': 'GPT 추가 생성',
+            'authors': '자동 생성됨',
+            'published': '현재'
+        })
+    
+    return topics

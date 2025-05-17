@@ -462,3 +462,41 @@ p {
     from, to { border-color: transparent }
     50% { border-color: #4CAF50 }
 }
+
+/* GPT 생성 배지 */
+.gpt-generated-badge {
+    background-color: #10a37f;  /* OpenAI 녹색 */
+    color: white;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    font-weight: 500;
+    margin-left: 8px;
+}
+
+/* GPT 생성 카드 스타일 */
+.gpt-generated-card {
+    border-left: 3px solid #10a37f;
+    background-color: #f8fdfb;
+}
+
+/* 주제 제목 컨테이너 */
+.topic-title-container {
+    display: flex;
+    align-items: center;
+    margin-bottom: 10px;
+}
+
+.topic-number {
+    font-weight: bold;
+    margin-right: 5px;
+}
+
+.topic-title {
+    font-weight: bold;
+}
+
+/* 키워드 태그 컨테이너 */
+.keyword-container {
+    margin: 10px 0;
+}

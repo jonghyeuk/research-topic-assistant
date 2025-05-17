@@ -42,6 +42,22 @@ def format_text_with_section_titles(text):
     
     return '\n'.join(formatted_parts)
 
+# 타이핑 효과 함수
+def typing_effect(container, text, speed=0.01, chunk_size=3):
+    full_text = text
+    displayed_text = ""
+    
+    # 한번에 표시할 문자 수와 지연 시간 설정
+    for i in range(0, len(full_text), chunk_size):
+        displayed_text = full_text[:i + chunk_size]
+        container.markdown(displayed_text, unsafe_allow_html=True)
+        time.sleep(speed)
+
+# 단계별 분석 상태 메시지 표시 함수
+def show_analysis_step(container, step_message, delay=0.6):
+    container.markdown(f'<div class="analysis-step-message">{step_message}</div>', unsafe_allow_html=True)
+    time.sleep(delay)
+
 # 콘텐츠 컨테이너로 감싸기
 st.markdown('<div class="content-container">', unsafe_allow_html=True)
 
@@ -70,11 +86,20 @@ if submit_button and topic:
     # 입력 값 세션 상태에 저장
     st.session_state.topic = topic
     
-    # 타이핑 효과를 위한 컨테이너
-    analysis_container = st.empty()
+    # 분석 상태 컨테이너
+    analysis_status = st.empty()
     
-    # 분석 시작 메시지 - 스타일 개선
-    analysis_container.markdown('<div class="analysis-loading">AI가 주제를 분석하고 있습니다...</div>', unsafe_allow_html=True)
+    # 결과 컨테이너
+    result_title = st.empty()
+    result_content = st.empty()
+    
+    # 단계별 분석 상태 표시
+    show_analysis_step(analysis_status, "🔍 주제 키워드를 추출하고 있습니다...")
+    show_analysis_step(analysis_status, "📚 관련 학문 분야를 식별하고 있습니다...")
+    show_analysis_step(analysis_status, "🧠 주제의 핵심 개념을 정의하고 있습니다...")
+    show_analysis_step(analysis_status, "🔄 학술 데이터베이스에서 관련 자료를 검색하고 있습니다...")
+    show_analysis_step(analysis_status, "⚙️ 수집된 정보를 종합적으로 분석하고 있습니다...")
+    show_analysis_step(analysis_status, "📝 최종 분석 결과를 생성하고 있습니다...")
     
     # GPT API를 통한 주제 분석
     analysis_result = analyze_topic(topic)
@@ -83,16 +108,18 @@ if submit_button and topic:
         # 분석 결과 저장
         st.session_state.topic_analysis = analysis_result
         
+        # 완료 메시지 표시
+        analysis_status.markdown('<div class="analysis-complete">✅ 분석이 완료되었습니다!</div>', unsafe_allow_html=True)
+        
         # 원본 텍스트를 스타일이 적용된 HTML로 변환
         original_text = analysis_result["full_text"]
         formatted_text = format_text_with_section_titles(original_text)
         
-        # 타이핑 효과 구현 (개선된 버전)
-        analysis_container.markdown('<div class="analysis-result-title">주제 분석 결과</div>', unsafe_allow_html=True)
-        text_container = analysis_container.empty()
+        # 결과 제목 표시
+        result_title.markdown('<div class="analysis-result-title">주제 분석 결과</div>', unsafe_allow_html=True)
         
-        # 스타일이 적용된 전체 텍스트 표시
-        text_container.markdown(formatted_text, unsafe_allow_html=True)
+        # 타이핑 효과로 결과 표시
+        typing_effect(result_content, formatted_text, speed=0.005, chunk_size=5)
         
         # 다음 단계로 이동 버튼 - 중앙 정렬 및 스타일 개선
         st.session_state.step = 2

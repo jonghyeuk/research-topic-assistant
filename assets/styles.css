@@ -328,6 +328,69 @@ p {
     margin-bottom: 1.2rem;
 }
 
+/* 관련성 배지 스타일 */
+.relevance-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 10px;
+    font-size: 12px;
+    margin-left: 8px;
+    margin-bottom: 8px;
+    font-weight: 500;
+}
+
+.high-relevance {
+    background-color: #28a745;
+    color: white;
+}
+
+.medium-relevance {
+    background-color: #ffc107;
+    color: #333;
+}
+
+.low-relevance {
+    background-color: #dc3545;
+    color: white;
+}
+
+/* 주제 분석 정보 스타일 */
+.topic-analysis {
+    background-color: #f8f9fa;
+    border: 1px solid #e9ecef;
+    border-radius: 5px;
+    padding: 15px;
+    margin-bottom: 20px;
+}
+
+.topic-analysis h4 {
+    font-size: 1rem;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.keyword-tag {
+    display: inline-block;
+    background-color: #e9ecef;
+    color: #495057;
+    padding: 2px 8px;
+    border-radius: 10px;
+    margin-right: 5px;
+    margin-bottom: 5px;
+    font-size: 12px;
+}
+
+/* 새로 검색하기 버튼 */
+.refresh-button {
+    background-color: #6c757d;
+    color: white;
+    width: 40%;
+}
+
+.refresh-button:hover {
+    background-color: #5a6268;
+}
+
 /* 모바일 반응형 */
 @media (max-width: 768px) {
     .content-container, .paper-container {
